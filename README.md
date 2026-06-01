@@ -50,6 +50,22 @@ Installs [`ps2exe`](https://github.com/MScholtes/PS2EXE) (current user, no admin
 
 ---
 
+## Is this safe? ("Windows protected your PC")
+
+Yes. When you run `OpenInClaude.exe`, Windows SmartScreen may show a blue **"Windows protected your PC"** warning. This happens to every unsigned app from an independent developer — code-signing certificates cost a few hundred dollars a year, which isn't worth it for a free 70 KB utility.
+
+To run it: click **More info**, then **Run anyway**.
+
+If you'd rather not trust the prebuilt binary, you don't have to:
+
+- **Read the source** — it's two PowerShell files: a small build script and one main script (no compiled magic). No network calls, no telemetry. It writes one file: your recent-folders list at `%APPDATA%\OpenInClaude\recents.json`.
+- **Run from source instead** (Option B above) — no `.exe` involved.
+- **Build the `.exe` yourself** (Option C) — compile the exact same code locally.
+
+The only thing this app does is wrap the `claude://code/new?folder=<path>` deep link that Claude Desktop already registers.
+
+---
+
 ## Usage
 
 | Action | Result |
