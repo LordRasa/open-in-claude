@@ -129,10 +129,14 @@ function Remove-Recent([string]$path) {
 $xaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Open in Claude" Width="460" Height="448"
+        Title="Open in Claude" Width="600" Height="450"
         WindowStyle="None" Background="#262624"
-        ResizeMode="NoResize" WindowStartupLocation="CenterScreen"
+        ResizeMode="CanResize" MinWidth="360" MinHeight="320" WindowStartupLocation="CenterScreen"
         AllowDrop="True" FontFamily="Segoe UI" SnapsToDevicePixels="True">
+
+  <WindowChrome.WindowChrome>
+    <WindowChrome ResizeBorderThickness="6" CaptionHeight="0" GlassFrameThickness="0,0,0,0"/>
+  </WindowChrome.WindowChrome>
 
   <Window.Resources>
     <SolidColorBrush x:Key="Card"     Color="#262624"/>
@@ -153,6 +157,7 @@ $xaml = @'
     <Geometry x:Key="IcoClock">M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0 M12 6v6l4 2</Geometry>
     <Geometry x:Key="IcoPointer">M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z</Geometry>
     <Geometry x:Key="IcoTrash2">M3 6h18 M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M10 11v6 M14 11v6</Geometry>
+    <Geometry x:Key="IcoMinus">M5 12h14</Geometry>
 
     <Style x:Key="Ico" TargetType="Path">
       <Setter Property="StrokeThickness" Value="2"/>
@@ -315,7 +320,7 @@ $xaml = @'
   </Window.Resources>
 
   <Border Background="{StaticResource Card}" BorderBrush="{StaticResource Border}" BorderThickness="1">
-    <Grid Margin="22,16,22,20">
+    <Grid Margin="22,16,22,22">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
         <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
@@ -323,20 +328,26 @@ $xaml = @'
       </Grid.RowDefinitions>
 
       <!-- header -->
-      <Grid Grid.Row="0">
+      <Grid Grid.Row="0" x:Name="HeaderGrid">
         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <Viewbox Grid.Column="0" Width="19" Height="19" Margin="0,0,9,0" VerticalAlignment="Center">
           <Grid Width="24" Height="24"><Path Style="{StaticResource Ico}" Data="{StaticResource IcoFolderPlus}" Stroke="{StaticResource Accent}"/></Grid>
         </Viewbox>
         <TextBlock Grid.Column="1" Text="Open a folder in Claude" Foreground="{StaticResource TextPri}" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
-        <Button x:Name="BtnClose" Grid.Column="2">
-          <Button.Style><StaticResource ResourceKey="Close"/></Button.Style>
-          <Viewbox Width="16" Height="16"><Grid Width="24" Height="24"><Path Style="{StaticResource Ico}" Data="{StaticResource IcoX}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/></Grid></Viewbox>
-        </Button>
+        <StackPanel Grid.Column="2" Orientation="Horizontal">
+          <Button x:Name="BtnMinimize">
+            <Button.Style><StaticResource ResourceKey="Close"/></Button.Style>
+            <Viewbox Width="16" Height="16"><Grid Width="24" Height="24"><Path Style="{StaticResource Ico}" Data="{StaticResource IcoMinus}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/></Grid></Viewbox>
+          </Button>
+          <Button x:Name="BtnClose">
+            <Button.Style><StaticResource ResourceKey="Close"/></Button.Style>
+            <Viewbox Width="16" Height="16"><Grid Width="24" Height="24"><Path Style="{StaticResource Ico}" Data="{StaticResource IcoX}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/></Grid></Viewbox>
+          </Button>
+        </StackPanel>
       </Grid>
 
       <!-- subtitle -->
-      <TextBlock Grid.Row="1" Text="Pick any folder and open it as a new &lt;/&gt; Code session's folder inside Claude Desktop." Foreground="{StaticResource TextMut}" FontSize="11.5" Margin="0,6,32,0" TextWrapping="Wrap"/>
+      <TextBlock Grid.Row="1" Text="Pick any folder and open it as a new &lt;/&gt; Code session's folder inside Claude Desktop." Foreground="{StaticResource TextMut}" FontSize="13" Margin="0,6,32,0" TextWrapping="Wrap"/>
 
       <!-- path field -->
       <Border Grid.Row="2" Background="{StaticResource Input}" CornerRadius="8" BorderBrush="{StaticResource Border}" BorderThickness="1" Padding="12,10" Margin="0,16,0,0">
@@ -390,7 +401,7 @@ $xaml = @'
         <TextBlock x:Name="TxtEmpty" Text="No recent folders yet." Foreground="{StaticResource TextMut}" FontSize="12" Margin="2,4,0,0" Visibility="Collapsed"/>
       </Grid>
 
-      <TextBlock x:Name="TxtStatus" Grid.Row="7" Text="" Foreground="{StaticResource Accent}" FontSize="11.5" Margin="2,12,0,0"/>
+      <TextBlock x:Name="TxtStatus" Grid.Row="7" Text="" Foreground="{StaticResource Accent}" FontSize="11.5" Margin="2,12,0,0" Visibility="Collapsed"/>
     </Grid>
   </Border>
 </Window>
@@ -403,7 +414,9 @@ $window = [Windows.Markup.XamlReader]::Load($reader)
 $TxtPath   = $window.FindName('TxtPath')
 $BtnChoose = $window.FindName('BtnChoose')
 $BtnOpen   = $window.FindName('BtnOpen')
-$BtnClose  = $window.FindName('BtnClose')
+$BtnClose    = $window.FindName('BtnClose')
+$BtnMinimize = $window.FindName('BtnMinimize')
+$HeaderGrid  = $window.FindName('HeaderGrid')
 $LstRecent = $window.FindName('LstRecent')
 $TxtEmpty  = $window.FindName('TxtEmpty')
 $TxtStatus = $window.FindName('TxtStatus')
@@ -417,6 +430,7 @@ function Set-SelectedPath([string]$path) {
     $TxtPath.Foreground = $window.FindResource('TextPri')
     $BtnOpen.IsEnabled = $true
     $TxtStatus.Text = ''
+    $TxtStatus.Visibility = 'Collapsed'
 }
 function Refresh-Recents {
     $items = @(Get-Recents)
@@ -429,14 +443,30 @@ function Invoke-OpenFolder([string]$path) {
     Start-Process ('claude://code/new?folder=' + [uri]::EscapeDataString($path))
     Add-Recent $path
     Refresh-Recents
+    $TxtStatus.Visibility = 'Visible'
     $TxtStatus.Text = [char]0x2713 + "  Opened  '$(Split-Path -Leaf $path)'  in Claude"
 }
 
 # ---------------------------------------------------------------- events
 $BtnClose.Add_Click({ $window.Close() })
+$BtnMinimize.Add_Click({ $window.WindowState = 'Minimized' })
 
 # whole-window drag (clicks on buttons/list handle themselves and won't drag)
 $window.Add_MouseLeftButtonDown({ try { $window.DragMove() } catch {} })
+# double-click anywhere in the header zone (including top padding) minimizes
+$window.Add_MouseLeftButtonDown({
+    param($s, $e)
+    if ($e.ClickCount -ne 2) { return }
+    $hb = $HeaderGrid.TransformToAncestor($window).Transform(
+        [System.Windows.Point]::new(0, $HeaderGrid.ActualHeight)).Y
+    if ($e.GetPosition($window).Y -gt $hb) { return }
+    $src = $e.OriginalSource
+    while ($src -ne $null -and -not ($src -is [System.Windows.Window])) {
+        if ($src -is [System.Windows.Controls.Button]) { return }
+        $src = [System.Windows.Media.VisualTreeHelper]::GetParent($src)
+    }
+    $window.WindowState = 'Minimized'
+})
 
 $BtnChoose.Add_Click({
     $handle = (New-Object System.Windows.Interop.WindowInteropHelper $window).Handle
