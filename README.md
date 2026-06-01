@@ -1,50 +1,73 @@
 # Open in Claude
 
-A small, portable launcher: pick a folder (or drag one in, or reuse a recent one) and open it
-as a **new Claude Desktop "Code" session**. Dark, minimal, Claude-styled.
+Claude Desktop's Code tab pins to one working folder with no built-in way to switch. **Open in Claude** fixes that — pick any folder and open it as a new Code session in one click.
 
-No install, no admin. It just fires the app's own deep link:
+![Windows 10/11](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows) ![PowerShell](https://img.shields.io/badge/PowerShell-5.1-5391FE?logo=powershell) ![No install](https://img.shields.io/badge/install-none-brightgreen)
+
+---
+
+## How it works
+
+The Claude Desktop app registers a `claude://` URL protocol with a built-in route for opening a new Code session in a chosen folder:
 
 ```
-claude://code/new?folder=<your folder>
+claude://code/new?folder=<path>
 ```
 
-…which opens a new Code session in that folder whether the Desktop app is running or not.
+Open in Claude wraps that deep link in a minimal dark UI — pick a folder, hit **Open in Claude**, done. Works whether the app is already running or closed.
 
-## Run it
+---
 
-- **Quick:** double-click **`Open in Claude.cmd`** (a console may flash briefly), or
-- **Direct:** `powershell -ExecutionPolicy Bypass -File OpenInClaude.ps1`
+## Getting started
 
-## Use it
+### Option A — Double-click exe (simplest)
 
-1. **Choose folder…** (native picker), **drag a folder** onto the window, or click a **Recent** entry.
-2. Hit **Open in Claude** (or double-click a recent) → the Desktop app opens a new session there.
-3. First time per folder, Windows/Claude shows a one-time *"Trust this Workspace?"* prompt — approve it.
+Download `OpenInClaude.exe` from the [latest release](../../releases/latest) and run it. No install, no admin.
 
-Recent folders are remembered between runs (stored in `%APPDATA%\OpenInClaude\recents.json`).
+### Option B — Run from source
 
-## Make a clean .exe (optional)
+Requires Windows PowerShell 5.1 (built into Windows 10/11).
 
-For a double-clickable executable with no console flash and an icon:
+```powershell
+powershell -ExecutionPolicy Bypass -File "Open in Claude.cmd"
+```
+
+Or double-click **`Open in Claude.cmd`** in Explorer.
+
+### Option C — Build the exe yourself
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File build.ps1
 ```
 
-This installs the `ps2exe` module (current user) and produces `OpenInClaude.exe`. Drop an
-`icon.ico` next to the script first if you want a custom icon; otherwise it builds without one.
+Installs [`ps2exe`](https://github.com/MScholtes/PS2EXE) (current user, no admin) and produces `OpenInClaude.exe`.
 
-## Files
+---
 
-| File | Purpose |
-|------|---------|
-| `OpenInClaude.ps1` | The app (WPF UI + logic) |
-| `Open in Claude.cmd` | Dev launcher (runs the .ps1 hidden) |
-| `build.ps1` | Compiles to `OpenInClaude.exe` via ps2exe |
-| `README.md` | This file |
+## Usage
+
+| Action | Result |
+|--------|--------|
+| **Choose folder…** | Opens the native Windows folder picker |
+| **Drag a folder** onto the window | Populates the path field |
+| **Click a Recent entry** | Selects it |
+| **Double-click a Recent entry** | Opens it immediately |
+| **Open in Claude** button | Fires the deep link, session opens |
+| **Esc** | Closes the app |
+
+Recent folders are persisted between runs at `%APPDATA%\OpenInClaude\recents.json`.
+
+The first time you open a folder, Claude shows a one-time **"Trust this Workspace?"** prompt — approve it and you won't see it again for that folder.
+
+---
 
 ## Requirements
 
-Windows 10/11 with the Claude Desktop app installed (registers the `claude://` protocol).
-Tested against Claude Desktop v1.9659.2.0.
+- Windows 10 or 11
+- [Claude Desktop](https://claude.ai/download) installed (registers the `claude://` protocol)
+
+---
+
+## Known limitation
+
+Opening an **old session** in the Desktop app restores that session's original folder, overwriting the selected one. This is a server-side limitation — the working folder is stored per-session on Anthropic's side and there is no local override. Open in Claude only controls *new* sessions.
