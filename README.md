@@ -6,6 +6,12 @@ Claude Desktop's Code tab pins to one working folder with no built-in way to swi
 
 ---
 
+<p align="center">
+  <img src="open-in-claude.jpg" alt="Open in Claude — UI screenshot" width="700"/>
+</p>
+
+---
+
 ## How it works
 
 The Claude Desktop app registers a `claude://` URL protocol with a built-in route for opening a new Code session in a chosen folder:
