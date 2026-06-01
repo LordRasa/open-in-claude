@@ -22,6 +22,12 @@ claude://code/new?folder=<path>
 
 Open in Claude wraps that deep link in a minimal dark UI — pick a folder, hit **Open in Claude**, done. Works whether the app is already running or closed.
 
+### How sessions are saved
+
+Open in Claude points a new, unsaved session at your folder. The folder only sticks once you send your first prompt — that commits the session. Before that it's provisional: clicking an existing session first reverts the app to its previously pinned folder, and you'll need to open your folder again.
+
+After the session is saved, set the sidebar to sort by project. A `+` appears next to the project name, letting you launch further sessions in that folder straight from the sidebar.
+
 ---
 
 ## Getting started
