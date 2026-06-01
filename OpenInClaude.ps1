@@ -115,6 +115,15 @@ function Add-Recent([string]$path) {
     if (-not (Test-Path -LiteralPath $script:AppDataDir)) { New-Item -ItemType Directory -Path $script:AppDataDir -Force | Out-Null }
     ($list | ConvertTo-Json -Depth 4) | Set-Content -LiteralPath $script:RecentsFile -Encoding UTF8
 }
+function Remove-Recent([string]$path) {
+    $all = if (Test-Path -LiteralPath $script:RecentsFile) {
+        try { @(Get-Content -LiteralPath $script:RecentsFile -Raw | ConvertFrom-Json) } catch { @() }
+    } else { @() }
+    $filtered = @($all | Where-Object { $_.FullPath -ne $path })
+    if (-not (Test-Path -LiteralPath $script:AppDataDir)) { New-Item -ItemType Directory -Path $script:AppDataDir -Force | Out-Null }
+    $json = if ($filtered.Count -gt 0) { $filtered | ConvertTo-Json -Depth 4 } else { '[]' }
+    $json | Set-Content -LiteralPath $script:RecentsFile -Encoding UTF8
+}
 
 # ---------------------------------------------------------------- XAML (UI)
 $xaml = @'
@@ -143,6 +152,7 @@ $xaml = @'
     <Geometry x:Key="IcoX">m6 6 12 12 M18 6 6 18</Geometry>
     <Geometry x:Key="IcoClock">M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0 M12 6v6l4 2</Geometry>
     <Geometry x:Key="IcoPointer">M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z</Geometry>
+    <Geometry x:Key="IcoTrash2">M3 6h18 M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M10 11v6 M14 11v6</Geometry>
 
     <Style x:Key="Ico" TargetType="Path">
       <Setter Property="StrokeThickness" Value="2"/>
@@ -238,14 +248,78 @@ $xaml = @'
         </Setter.Value>
       </Setter>
     </Style>
+
+    <Style x:Key="RecentDelete" TargetType="Button">
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Focusable" Value="False"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="b" Background="Transparent" CornerRadius="4" Padding="2">
+              <ContentPresenter/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="b" Property="Background" Value="{StaticResource Border}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style TargetType="ScrollBar">
+      <Style.Triggers>
+        <Trigger Property="Orientation" Value="Vertical">
+          <Setter Property="Width" Value="12"/>
+          <Setter Property="MinWidth" Value="12"/>
+          <Setter Property="Template">
+            <Setter.Value>
+              <ControlTemplate TargetType="ScrollBar">
+                <Grid Width="12">
+                  <Grid.RowDefinitions>
+                    <RowDefinition Height="14"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="14"/>
+                  </Grid.RowDefinitions>
+                  <RepeatButton Grid.Row="0" Command="ScrollBar.LineUpCommand" Background="Transparent" BorderThickness="0" Focusable="False">
+                    <Path Data="M0,6 L4,0 L8,6 Z" Fill="#6E6D6A" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </RepeatButton>
+                  <Track Grid.Row="1" x:Name="PART_Track" IsDirectionReversed="True">
+                    <Track.DecreaseRepeatButton>
+                      <RepeatButton Command="ScrollBar.PageUpCommand" Background="Transparent" BorderThickness="0" Focusable="False" Opacity="0"/>
+                    </Track.DecreaseRepeatButton>
+                    <Track.Thumb>
+                      <Thumb>
+                        <Thumb.Template>
+                          <ControlTemplate TargetType="Thumb">
+                            <Border Background="#5C5B58" CornerRadius="3" Margin="3,0"/>
+                          </ControlTemplate>
+                        </Thumb.Template>
+                      </Thumb>
+                    </Track.Thumb>
+                    <Track.IncreaseRepeatButton>
+                      <RepeatButton Command="ScrollBar.PageDownCommand" Background="Transparent" BorderThickness="0" Focusable="False" Opacity="0"/>
+                    </Track.IncreaseRepeatButton>
+                  </Track>
+                  <RepeatButton Grid.Row="2" Command="ScrollBar.LineDownCommand" Background="Transparent" BorderThickness="0" Focusable="False">
+                    <Path Data="M0,0 L8,0 L4,6 Z" Fill="#6E6D6A" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </RepeatButton>
+                </Grid>
+              </ControlTemplate>
+            </Setter.Value>
+          </Setter>
+        </Trigger>
+      </Style.Triggers>
+    </Style>
   </Window.Resources>
 
   <Border Background="{StaticResource Card}" BorderBrush="{StaticResource Border}" BorderThickness="1">
     <Grid Margin="22,16,22,20">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-        <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/>
-        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+        <RowDefinition Height="*"/><RowDefinition Height="Auto"/>
       </Grid.RowDefinitions>
 
       <!-- header -->
@@ -261,8 +335,11 @@ $xaml = @'
         </Button>
       </Grid>
 
+      <!-- subtitle -->
+      <TextBlock Grid.Row="1" Text="Pick any folder and open it as a new &lt;/&gt; Code session's folder inside Claude Desktop." Foreground="{StaticResource TextMut}" FontSize="11.5" Margin="0,6,32,0" TextWrapping="Wrap"/>
+
       <!-- path field -->
-      <Border Grid.Row="1" Background="{StaticResource Input}" CornerRadius="8" BorderBrush="{StaticResource Border}" BorderThickness="1" Padding="12,10" Margin="0,16,0,0">
+      <Border Grid.Row="2" Background="{StaticResource Input}" CornerRadius="8" BorderBrush="{StaticResource Border}" BorderThickness="1" Padding="12,10" Margin="0,16,0,0">
         <Grid>
           <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
           <Viewbox Grid.Column="0" Width="16" Height="16" Margin="0,0,9,0" VerticalAlignment="Center">
@@ -273,7 +350,7 @@ $xaml = @'
       </Border>
 
       <!-- buttons -->
-      <Grid Grid.Row="2" Margin="0,12,0,0">
+      <Grid Grid.Row="3" Margin="0,12,0,0">
         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <Button x:Name="BtnChoose" Grid.Column="0" Style="{StaticResource Ghost}">
           <StackPanel Orientation="Horizontal">
@@ -289,10 +366,10 @@ $xaml = @'
         </Button>
       </Grid>
 
-      <Border Grid.Row="3" Height="1" Background="{StaticResource Border}" Margin="0,18,0,0"/>
-      <TextBlock Grid.Row="4" Text="RECENT" Foreground="{StaticResource TextMut}" FontSize="10.5" FontWeight="SemiBold" Margin="2,16,0,6"/>
+      <Border Grid.Row="4" Height="1" Background="{StaticResource Border}" Margin="0,18,0,0"/>
+      <TextBlock Grid.Row="5" Text="RECENT" Foreground="{StaticResource TextMut}" FontSize="10.5" FontWeight="SemiBold" Margin="2,16,0,6"/>
 
-      <Grid Grid.Row="5">
+      <Grid Grid.Row="6">
         <ListBox x:Name="LstRecent" Style="{StaticResource RecentList}" ItemContainerStyle="{StaticResource RecentItem}">
           <ListBox.ItemTemplate>
             <DataTemplate>
@@ -303,7 +380,9 @@ $xaml = @'
                   <TextBlock Text="{Binding Name}" Foreground="{StaticResource TextPri}" FontSize="12.5"/>
                   <TextBlock Text="{Binding FullPath}" Foreground="{StaticResource TextMut}" FontSize="10.5" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
-                <Viewbox Grid.Column="2" Width="15" Height="15" Margin="8,0,2,0" VerticalAlignment="Center"><Grid Width="24" Height="24"><Path Style="{StaticResource Ico}" Data="{StaticResource IcoArrow}" Stroke="{StaticResource Accent}"/></Grid></Viewbox>
+                <Button Grid.Column="2" Style="{StaticResource RecentDelete}" Tag="delete" Margin="8,0,0,0" VerticalAlignment="Center">
+                  <Viewbox Width="14" Height="14"><Grid Width="24" Height="24"><Path Style="{StaticResource Ico}" Data="{StaticResource IcoTrash2}" Stroke="{StaticResource TextMut}"/></Grid></Viewbox>
+                </Button>
               </Grid>
             </DataTemplate>
           </ListBox.ItemTemplate>
@@ -311,7 +390,7 @@ $xaml = @'
         <TextBlock x:Name="TxtEmpty" Text="No recent folders yet." Foreground="{StaticResource TextMut}" FontSize="12" Margin="2,4,0,0" Visibility="Collapsed"/>
       </Grid>
 
-      <TextBlock x:Name="TxtStatus" Grid.Row="6" Text="" Foreground="{StaticResource Accent}" FontSize="11.5" Margin="2,12,0,0"/>
+      <TextBlock x:Name="TxtStatus" Grid.Row="7" Text="" Foreground="{StaticResource Accent}" FontSize="11.5" Margin="2,12,0,0"/>
     </Grid>
   </Border>
 </Window>
@@ -391,6 +470,24 @@ $window.Add_Drop({
 $LstRecent.Add_SelectionChanged({ if ($LstRecent.SelectedItem) { Set-SelectedPath $LstRecent.SelectedItem.FullPath } })
 $LstRecent.Add_MouseDoubleClick({ if ($LstRecent.SelectedItem) { Invoke-OpenFolder $LstRecent.SelectedItem.FullPath } })
 $window.Add_KeyDown({ param($s,$e) if ($e.Key -eq 'Escape') { $window.Close() } })
+$LstRecent.AddHandler(
+    [System.Windows.Controls.Button]::ClickEvent,
+    [System.Windows.RoutedEventHandler]{
+        param($s, $e)
+        $src = $e.OriginalSource
+        while ($src -ne $null -and -not ($src -is [System.Windows.Controls.Button])) {
+            $src = [System.Windows.Media.VisualTreeHelper]::GetParent($src)
+        }
+        if ($src -is [System.Windows.Controls.Button] -and $src.Tag -eq 'delete') {
+            $item = $src.DataContext
+            if ($item -and $item.FullPath) {
+                Remove-Recent $item.FullPath
+                Refresh-Recents
+                $e.Handled = $true
+            }
+        }
+    }
+)
 
 # ---------------------------------------------------------------- go
 Refresh-Recents
